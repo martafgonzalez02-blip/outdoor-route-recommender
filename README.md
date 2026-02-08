@@ -35,10 +35,32 @@ Una recomendación es buena cuando:
 ## Enfoque técnico
 
 - **Python + SQL** como stack principal
-- **SQLite** como base de datos (portable, sin infraestructura)
+- **MySQL 8.0** en contenedor Docker como base de datos
+- **Docker Compose** para levantar la infraestructura con un solo comando
 - **Datos simulados** realistas, no scraping ni APIs externas
 - **Diseño analítico**: modelo de datos tipo estrella orientado a responder preguntas de producto
 - **Iterativo**: cada fase es funcional por sí misma y añade complejidad incremental
+
+## Setup
+
+```bash
+# Levantar MySQL
+docker compose up -d
+
+# Verificar que está corriendo
+docker compose ps
+
+# Conectar al contenedor
+docker exec -it outdoor-routes-db mysql -u routes_user -proutes_pass outdoor_routes
+
+# Parar el contenedor
+docker compose down
+
+# Parar y borrar datos (reset completo)
+docker compose down -v
+```
+
+Requisitos: [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado.
 
 ## Estructura del repositorio
 
@@ -46,6 +68,8 @@ Una recomendación es buena cuando:
 outdoor-route-recommender/
 ├── README.md               # Este archivo
 ├── CLAUDE.md               # Instrucciones para Claude Code
+├── docker-compose.yml      # MySQL en contenedor Docker
+├── .env.example            # Variables de entorno (copiar a .env)
 ├── data/
 │   ├── raw/                # Datos sin procesar
 │   └── processed/          # Datos limpios y normalizados
@@ -72,7 +96,7 @@ outdoor-route-recommender/
 
 ## Decisiones de diseño
 
-1. **SQLite sobre PostgreSQL**: para este proyecto no necesitamos concurrencia ni tipos avanzados. SQLite permite que cualquiera clone el repo y ejecute todo sin instalar nada.
+1. **MySQL en Docker sobre SQLite**: SQLite es más simple, pero MySQL en Docker añade aprendizaje real de contenedores, SQL con tipos estrictos y un entorno más cercano a producción. Docker Compose permite que cualquiera levante el entorno con `docker compose up -d` sin instalar MySQL en su máquina.
 
 2. **Datos simulados sobre datos reales**: evita problemas legales, de scraping y de privacidad. Permite controlar la distribución y los edge cases. Los datos se generan con distribuciones realistas basadas en rangos reales de actividades outdoor.
 
@@ -81,3 +105,11 @@ outdoor-route-recommender/
 4. **Sin framework de ML**: no usamos scikit-learn, TensorFlow ni similares. Las features y el scoring se calculan con SQL y Python puro. Esto fuerza a entender qué hace cada paso.
 
 5. **Documentación como entregable**: cada fase produce documentación técnica, no solo código. El objetivo es que el proyecto se entienda leyendo los docs, sin ejecutar nada.
+
+6. **Coste de migración a PostgreSQL**: el proyecto usa SQL estándar por diseño. Desde MySQL, los cambios serían mínimos:
+   - **DDL**: `AUTO_INCREMENT` → `GENERATED ALWAYS AS IDENTITY`, `TINYINT(1)` → `BOOLEAN`, ajustar tipos numéricos
+   - **Funciones SQL**: revisar funciones de fecha (`DATE_FORMAT()` → `TO_CHAR()`, `NOW()` funciona en ambos)
+   - **Python**: cambiar `mysql-connector-python` por `psycopg2`/`psycopg3`, adaptar connection string
+   - **Docker**: cambiar imagen `mysql:8.0` por `postgres:16` en docker-compose.yml
+   - **Lo que NO cambia**: JOINs, GROUP BY, WHERE, subconsultas, CTEs, window functions
+   - **Estimación**: < 1 día en cualquier fase del proyecto
