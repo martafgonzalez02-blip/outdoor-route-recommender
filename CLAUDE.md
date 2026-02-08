@@ -47,7 +47,7 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 |------|--------|-------------------|--------|
 | 0 | Fundamentos y narrativa | README.md | Completada |
 | 1 | Modelo de datos analitico | schema.sql, DATA_MODEL.md | Completada |
-| 2 | Ingesta y normalizacion | Scripts Python de ingesta | Pendiente |
+| 2 | Ingesta y normalizacion | Scripts Python de ingesta | Completada |
 | 3 | Calidad de datos | Reglas, scoring, informe | Pendiente |
 | 4 | Feature engineering | FEATURES.md, scripts SQL/Python | Pendiente |
 | 5 | Recomendador v1 | recommender.py, recommend(user_id) | Pendiente |
@@ -59,7 +59,8 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 
 - **Fase 0**: Completada (README.md con narrativa, problema, enfoque)
 - **Fase 1**: Completada (schema.sql con esquema estrella, DATA_MODEL.md con documentacion)
-- **Fase 2**: Pendiente (ingesta y normalizacion)
+- **Fase 2**: Completada (generators + db_loader + DATA_GENERATION.md)
+- **Fase 3**: Pendiente (calidad de datos)
 
 ## Comandos
 
@@ -68,6 +69,9 @@ docker compose up -d          # Levantar MySQL
 docker compose down            # Parar MySQL
 docker compose down -v         # Parar y borrar datos
 docker exec -it outdoor-routes-db mysql -u routes_user -proutes_pass outdoor_routes  # Conectar
+
+python -m src.generate_all              # Generar CSVs en data/raw/
+python -m src.generate_all --load-db    # Generar CSVs + cargar en MySQL
 ```
 
 _(Lint y tests: sin configurar todavia.)_
@@ -87,5 +91,9 @@ outdoor-route-recommender/
 ├── notebooks/              # Notebooks de analisis y evaluacion
 ├── sql/                    # Esquemas DDL y queries analiticas
 ├── src/                    # Codigo Python del proyecto
+│   ├── config.py           # Parametros centralizados (seed, distribuciones, DB)
+│   ├── generators/         # Generadores de datos simulados
+│   ├── generate_all.py     # Orquestador: python -m src.generate_all
+│   └── db_loader.py        # Carga CSVs en MySQL
 └── tests/                  # Tests unitarios y de integracion
 ```
