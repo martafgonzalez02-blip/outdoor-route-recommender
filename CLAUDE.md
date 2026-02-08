@@ -46,7 +46,7 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 | Fase | Nombre | Entregables clave | Estado |
 |------|--------|-------------------|--------|
 | 0 | Fundamentos y narrativa | README.md | Completada |
-| 1 | Modelo de datos analitico | schema.sql, DATA_MODEL.md | En curso |
+| 1 | Modelo de datos analitico | schema.sql, DATA_MODEL.md | Completada |
 | 2 | Ingesta y normalizacion | Scripts Python de ingesta | Pendiente |
 | 3 | Calidad de datos | Reglas, scoring, informe | Pendiente |
 | 4 | Feature engineering | FEATURES.md, scripts SQL/Python | Pendiente |
@@ -58,7 +58,8 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 ## Estado actual
 
 - **Fase 0**: Completada (README.md con narrativa, problema, enfoque)
-- **Fase 1**: En curso (modelo de datos analitico)
+- **Fase 1**: Completada (schema.sql con esquema estrella, DATA_MODEL.md con documentacion)
+- **Fase 2**: Pendiente (ingesta y normalizacion)
 
 ## Comandos
 
