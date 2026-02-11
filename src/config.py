@@ -328,6 +328,14 @@ ROUTE_NAME_PARTS = {
 }
 
 # =============================================================================
+# Data quality thresholds (Phase 3)
+# =============================================================================
+DQ_DISTRIBUTION_TOLERANCE = 0.05   # 5pp max desviacion por categoria
+DQ_RATE_TOLERANCE = 0.03           # 3pp para rates (weekend, etc.)
+DQ_MEAN_TOLERANCE = 0.3            # max desviacion en medias (ratings)
+DQ_ACTIVITIES_TOLERANCE = 0.10     # 10% tolerance en total actividades
+
+# =============================================================================
 # Conexion MySQL
 # =============================================================================
 DB_CONFIG = {

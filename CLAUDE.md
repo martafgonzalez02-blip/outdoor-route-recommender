@@ -48,7 +48,7 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 | 0 | Fundamentos y narrativa | README.md | Completada |
 | 1 | Modelo de datos analitico | schema.sql, DATA_MODEL.md | Completada |
 | 2 | Ingesta y normalizacion | Scripts Python de ingesta | Completada |
-| 3 | Calidad de datos | Reglas, scoring, informe | Pendiente |
+| 3 | Calidad de datos | Reglas, scoring, informe | Completada |
 | 4 | Feature engineering | FEATURES.md, scripts SQL/Python | Pendiente |
 | 5 | Recomendador v1 | recommender.py, recommend(user_id) | Pendiente |
 | 6 | Evaluacion offline | Metricas, notebook de evaluacion | Pendiente |
@@ -60,7 +60,7 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 - **Fase 0**: Completada (README.md con narrativa, problema, enfoque)
 - **Fase 1**: Completada (schema.sql con esquema estrella, DATA_MODEL.md con documentacion)
 - **Fase 2**: Completada (generators + db_loader + DATA_GENERATION.md)
-- **Fase 3**: Pendiente (calidad de datos)
+- **Fase 3**: Completada (data_quality.py + quality_checks.sql + DATA_QUALITY.md)
 
 ## Comandos
 
@@ -72,6 +72,8 @@ docker exec -it outdoor-routes-db mysql -u routes_user -proutes_pass outdoor_rou
 
 python -m src.generate_all              # Generar CSVs en data/raw/
 python -m src.generate_all --load-db    # Generar CSVs + cargar en MySQL
+python -m src.generate_all --check      # Generar CSVs + validar calidad
+python -m src.data_quality              # Ejecutar 28 checks sobre CSVs existentes
 ```
 
 _(Lint y tests: sin configurar todavia.)_
@@ -90,10 +92,12 @@ outdoor-route-recommender/
 ├── docs/                   # Documentacion tecnica (DATA_MODEL.md, FEATURES.md, etc.)
 ├── notebooks/              # Notebooks de analisis y evaluacion
 ├── sql/                    # Esquemas DDL y queries analiticas
+│   └── quality_checks.sql  # Queries DQ para MySQL post-carga
 ├── src/                    # Codigo Python del proyecto
 │   ├── config.py           # Parametros centralizados (seed, distribuciones, DB)
 │   ├── generators/         # Generadores de datos simulados
 │   ├── generate_all.py     # Orquestador: python -m src.generate_all
-│   └── db_loader.py        # Carga CSVs en MySQL
+│   ├── db_loader.py        # Carga CSVs en MySQL
+│   └── data_quality.py     # 28 checks de calidad sobre CSVs
 └── tests/                  # Tests unitarios y de integracion
 ```
