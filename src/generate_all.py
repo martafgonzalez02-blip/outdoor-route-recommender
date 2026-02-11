@@ -7,6 +7,7 @@ Uso:
 """
 
 import argparse
+import sys
 import time
 
 from src.generators import generate_users, generate_routes, generate_activities
@@ -26,6 +27,11 @@ def main():
         type=int,
         default=None,
         help="Seed para reproducibilidad (default: usa config.SEED=42)",
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Ejecutar data quality checks despues de generar CSVs",
     )
     args = parser.parse_args()
 
@@ -70,6 +76,16 @@ def main():
         print("=" * 60)
         from src.db_loader import load_all
         load_all()
+
+    # 5. Data quality checks (opcional)
+    if args.check:
+        print()
+        from src.data_quality import run_all_checks, format_report
+        results, score, status = run_all_checks()
+        lines = format_report(results, score, status)
+        print("\n".join(lines))
+        if status == "FAIL":
+            sys.exit(1)
 
     print("\nDone.")
 
