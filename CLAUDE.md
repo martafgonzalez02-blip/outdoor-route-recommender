@@ -49,7 +49,7 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 | 1 | Modelo de datos analitico | schema.sql, DATA_MODEL.md | Completada |
 | 2 | Ingesta y normalizacion | Scripts Python de ingesta | Completada |
 | 3 | Calidad de datos | Reglas, scoring, informe | Completada |
-| 4 | Feature engineering | FEATURES.md, scripts SQL/Python | Pendiente |
+| 4 | Feature engineering | FEATURES.md, scripts SQL/Python | Completada |
 | 5 | Recomendador v1 | recommender.py, recommend(user_id) | Pendiente |
 | 6 | Evaluacion offline | Metricas, notebook de evaluacion | Pendiente |
 | 7 | Edge cases y producto | Cold start, fallbacks | Pendiente |
@@ -61,6 +61,7 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 - **Fase 1**: Completada (schema.sql con esquema estrella, DATA_MODEL.md con documentacion)
 - **Fase 2**: Completada (generators + db_loader + DATA_GENERATION.md)
 - **Fase 3**: Completada (data_quality.py + quality_checks.sql + DATA_QUALITY.md)
+- **Fase 4**: Completada (build_features.py + features/ + FEATURES.md)
 
 ## Comandos
 
@@ -74,6 +75,7 @@ python -m src.generate_all              # Generar CSVs en data/raw/
 python -m src.generate_all --load-db    # Generar CSVs + cargar en MySQL
 python -m src.generate_all --check      # Generar CSVs + validar calidad
 python -m src.data_quality              # Ejecutar 28 checks sobre CSVs existentes
+python -m src.build_features            # Feature engineering: raw/ -> processed/
 ```
 
 _(Lint y tests: sin configurar todavia.)_
@@ -98,6 +100,11 @@ outdoor-route-recommender/
 │   ├── generators/         # Generadores de datos simulados
 │   ├── generate_all.py     # Orquestador: python -m src.generate_all
 │   ├── db_loader.py        # Carga CSVs en MySQL
-│   └── data_quality.py     # 28 checks de calidad sobre CSVs
+│   ├── data_quality.py     # 28 checks de calidad sobre CSVs
+│   ├── build_features.py   # Orquestador: python -m src.build_features
+│   └── features/           # Modulos de feature engineering
+│       ├── user_profiles.py    # 35 features por usuario
+│       ├── route_features.py   # 21 features por ruta
+│       └── normalization.py    # Min-max scaling + stats
 └── tests/                  # Tests unitarios y de integracion
 ```

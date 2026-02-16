@@ -32,5 +32,6 @@ Thumbs.db
 # Environment variables
 .env
 
-# Generated data (reproducible via python -m src.generate_all)
+# Generated data (reproducible via python -m src.generate_all / build_features)
 data/raw/*.csv
+data/processed/*.csv

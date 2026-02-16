@@ -336,6 +336,41 @@ DQ_MEAN_TOLERANCE = 0.3            # max desviacion en medias (ratings)
 DQ_ACTIVITIES_TOLERANCE = 0.10     # 10% tolerance en total actividades
 
 # =============================================================================
+# Feature engineering (Phase 4)
+# =============================================================================
+FEATURE_MIN_ACTIVITIES = 5  # minimo de completadas para perfil fiable
+
+DIFFICULTY_NUMERIC_MAP = {
+    "easy": 1,
+    "moderate": 2,
+    "hard": 3,
+    "expert": 4,
+}
+
+EXPERIENCE_NUMERIC_MAP = {
+    "beginner": 1,
+    "intermediate": 2,
+    "advanced": 3,
+    "expert": 4,
+}
+
+# Columnas continuas a normalizar min-max (user profiles)
+USER_NORMALIZE_COLS = [
+    "total_activities", "completed_activities", "activities_per_month",
+    "avg_rating_given", "days_since_last_activity", "activity_span_days",
+    "avg_distance_km", "std_distance_km", "avg_elevation_gain_m",
+    "std_elevation_gain_m", "avg_duration_h", "avg_pace_factor",
+    "num_distinct_zones",
+]
+
+# Columnas continuas a normalizar min-max (route features)
+ROUTE_NORMALIZE_COLS = [
+    "distance_km", "elevation_gain_m", "elevation_loss_m",
+    "estimated_duration_h", "total_activities", "unique_users",
+    "avg_rating", "num_ratings", "avg_actual_duration_h",
+]
+
+# =============================================================================
 # Conexion MySQL
 # =============================================================================
 DB_CONFIG = {
@@ -353,4 +388,5 @@ import pathlib
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent
 DATA_RAW_DIR = PROJECT_ROOT / "data" / "raw"
+DATA_PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 SQL_DIR = PROJECT_ROOT / "sql"
