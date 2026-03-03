@@ -1,16 +1,16 @@
 """
-Modulo de calidad de datos para el proyecto outdoor-route-recommender.
+Data quality module for the outdoor-route-recommender project.
 
-Ejecuta 28 checks organizados en 5 tiers:
+Runs 28 checks organized in 5 tiers:
   1. Schema integrity (8 checks)
   2. Referential integrity (5 checks)
   3. Domain ranges (8 checks)
-  4. Coherencia temporal/logica (3 checks)
-  5. Distribuciones (4 checks)
+  4. Temporal/logical coherence (3 checks)
+  5. Distributions (4 checks)
 
-Uso:
-  python -m src.data_quality                   # Report por stdout
-  python -m src.data_quality --output FILE     # Tambien escribe a archivo
+Usage:
+  python -m src.data_quality                   # Report to stdout
+  python -m src.data_quality --output FILE     # Also write to file
 """
 
 import argparse
@@ -38,7 +38,7 @@ from src.config import (
 # =============================================================================
 
 def _load_csvs():
-    """Lee los 3 CSVs de data/raw/ y devuelve (users, routes, activities)."""
+    """Read the 3 CSVs from data/raw/ and return (users, routes, activities)."""
     def _read(filename):
         path = DATA_RAW_DIR / filename
         with open(path, newline="", encoding="utf-8") as f:
@@ -48,22 +48,22 @@ def _load_csvs():
 
 
 def _parse_date(date_str):
-    """Convierte 'YYYY-MM-DD' a date."""
+    """Convert 'YYYY-MM-DD' to date."""
     parts = date_str.split("-")
     return date_cls(int(parts[0]), int(parts[1]), int(parts[2]))
 
 
 def _check(name, passed, message, level="FAIL"):
-    """Crea un resultado de check.
+    """Create a check result.
 
     Args:
-        name: nombre unico del check
-        passed: True si pasa, False si falla
-        message: descripcion del resultado
-        level: 'FAIL' o 'WARN' (usado cuando passed=False)
+        name: unique check name
+        passed: True if passes, False if fails
+        message: result description
+        level: 'FAIL' or 'WARN' (used when passed=False)
 
     Returns:
-        dict con keys: name, status, message
+        dict with keys: name, status, message
     """
     if passed:
         status = "PASS"
@@ -77,7 +77,7 @@ def _check(name, passed, message, level="FAIL"):
 # =============================================================================
 
 def check_schema(users, routes, activities):
-    """Checks de integridad del esquema: counts, columnas, PKs."""
+    """Schema integrity checks: counts, columns, PKs."""
     results = []
 
     # 1. users_row_count
@@ -85,7 +85,7 @@ def check_schema(users, routes, activities):
     results.append(_check(
         "users_row_count",
         n_users == NUM_USERS,
-        f"Esperado {NUM_USERS}, encontrado {n_users}",
+        f"Expected {NUM_USERS}, found {n_users}",
     ))
 
     # 2. routes_row_count
@@ -93,7 +93,7 @@ def check_schema(users, routes, activities):
     results.append(_check(
         "routes_row_count",
         n_routes == NUM_ROUTES,
-        f"Esperado {NUM_ROUTES}, encontrado {n_routes}",
+        f"Expected {NUM_ROUTES}, found {n_routes}",
     ))
 
     # 3. activities_row_count (~TARGET_ACTIVITIES +/-10%)
@@ -103,7 +103,7 @@ def check_schema(users, routes, activities):
     results.append(_check(
         "activities_row_count",
         low <= n_acts <= high,
-        f"Esperado {TARGET_ACTIVITIES} +/-10% [{low}-{high}], encontrado {n_acts}",
+        f"Expected {TARGET_ACTIVITIES} +/-10% [{low}-{high}], found {n_acts}",
     ))
 
     # 4. users_columns
@@ -113,7 +113,7 @@ def check_schema(users, routes, activities):
     results.append(_check(
         "users_columns",
         expected_user_cols.issubset(actual_user_cols),
-        f"Esperadas {sorted(expected_user_cols)}, encontradas {sorted(actual_user_cols)}",
+        f"Expected {sorted(expected_user_cols)}, found {sorted(actual_user_cols)}",
     ))
 
     # 5. routes_columns
@@ -125,7 +125,7 @@ def check_schema(users, routes, activities):
     results.append(_check(
         "routes_columns",
         expected_route_cols.issubset(actual_route_cols),
-        f"Esperadas {sorted(expected_route_cols)}, encontradas {sorted(actual_route_cols)}",
+        f"Expected {sorted(expected_route_cols)}, found {sorted(actual_route_cols)}",
     ))
 
     # 6. activities_columns
@@ -135,7 +135,7 @@ def check_schema(users, routes, activities):
     results.append(_check(
         "activities_columns",
         expected_act_cols.issubset(actual_act_cols),
-        f"Esperadas {sorted(expected_act_cols)}, encontradas {sorted(actual_act_cols)}",
+        f"Expected {sorted(expected_act_cols)}, found {sorted(actual_act_cols)}",
     ))
 
     # 7. users_pk_unique
@@ -144,7 +144,7 @@ def check_schema(users, routes, activities):
     results.append(_check(
         "users_pk_unique",
         sorted(user_ids) == expected_ids,
-        f"user_id 1..{NUM_USERS} unicos sin gaps: {len(user_ids)} ids, "
+        f"user_id 1..{NUM_USERS} unique without gaps: {len(user_ids)} ids, "
         f"min={min(user_ids) if user_ids else 'N/A'}, max={max(user_ids) if user_ids else 'N/A'}",
     ))
 
@@ -154,7 +154,7 @@ def check_schema(users, routes, activities):
     results.append(_check(
         "routes_pk_unique",
         sorted(route_ids) == expected_rids,
-        f"route_id 1..{NUM_ROUTES} unicos sin gaps: {len(route_ids)} ids, "
+        f"route_id 1..{NUM_ROUTES} unique without gaps: {len(route_ids)} ids, "
         f"min={min(route_ids) if route_ids else 'N/A'}, max={max(route_ids) if route_ids else 'N/A'}",
     ))
 
@@ -166,7 +166,7 @@ def check_schema(users, routes, activities):
 # =============================================================================
 
 def check_referential_integrity(users, routes, activities):
-    """Checks de integridad referencial: FKs entre tablas."""
+    """Referential integrity checks: FKs between tables."""
     results = []
 
     valid_user_ids = {int(u["user_id"]) for u in users}
@@ -178,8 +178,8 @@ def check_referential_integrity(users, routes, activities):
     results.append(_check(
         "activities_user_fk",
         len(orphan_users) == 0,
-        f"user_ids huerfanos en activities: {len(orphan_users)}"
-        + (f" (ej: {sorted(orphan_users)[:5]})" if orphan_users else ""),
+        f"orphan user_ids in activities: {len(orphan_users)}"
+        + (f" (e.g.: {sorted(orphan_users)[:5]})" if orphan_users else ""),
     ))
 
     # 10. activities_route_fk
@@ -188,8 +188,8 @@ def check_referential_integrity(users, routes, activities):
     results.append(_check(
         "activities_route_fk",
         len(orphan_routes) == 0,
-        f"route_ids huerfanos en activities: {len(orphan_routes)}"
-        + (f" (ej: {sorted(orphan_routes)[:5]})" if orphan_routes else ""),
+        f"orphan route_ids in activities: {len(orphan_routes)}"
+        + (f" (e.g.: {sorted(orphan_routes)[:5]})" if orphan_routes else ""),
     ))
 
     # 11. routes_activity_type_fk
@@ -199,7 +199,7 @@ def check_referential_integrity(users, routes, activities):
     results.append(_check(
         "routes_activity_type_fk",
         len(invalid_act) == 0,
-        f"activity_type_ids invalidos en routes: {invalid_act if invalid_act else 'ninguno'}",
+        f"invalid activity_type_ids in routes: {invalid_act if invalid_act else 'none'}",
     ))
 
     # 12. routes_terrain_type_fk
@@ -209,7 +209,7 @@ def check_referential_integrity(users, routes, activities):
     results.append(_check(
         "routes_terrain_type_fk",
         len(invalid_ter) == 0,
-        f"terrain_type_ids invalidos en routes: {invalid_ter if invalid_ter else 'ninguno'}",
+        f"invalid terrain_type_ids in routes: {invalid_ter if invalid_ter else 'none'}",
     ))
 
     # 13. routes_zone_fk
@@ -219,7 +219,7 @@ def check_referential_integrity(users, routes, activities):
     results.append(_check(
         "routes_zone_fk",
         len(invalid_zones) == 0,
-        f"zone_ids invalidos en routes: {invalid_zones if invalid_zones else 'ninguno'}",
+        f"invalid zone_ids in routes: {invalid_zones if invalid_zones else 'none'}",
     ))
 
     return results
@@ -230,7 +230,7 @@ def check_referential_integrity(users, routes, activities):
 # =============================================================================
 
 def check_domain_ranges(users, routes, activities):
-    """Checks de rangos de dominio: valores dentro de limites esperados."""
+    """Domain range checks: values within expected limits."""
     results = []
 
     # 14. routes_distance_min
@@ -239,7 +239,7 @@ def check_domain_ranges(users, routes, activities):
     results.append(_check(
         "routes_distance_min",
         min_dist >= 0.5,
-        f"distance_km min={min_dist:.2f} (esperado >= 0.5)",
+        f"distance_km min={min_dist:.2f} (expected >= 0.5)",
     ))
 
     # 15. routes_elevation_min
@@ -248,7 +248,7 @@ def check_domain_ranges(users, routes, activities):
     results.append(_check(
         "routes_elevation_min",
         min_elev >= 10,
-        f"elevation_gain_m min={min_elev} (esperado >= 10)",
+        f"elevation_gain_m min={min_elev} (expected >= 10)",
     ))
 
     # 16. routes_duration_min
@@ -257,7 +257,7 @@ def check_domain_ranges(users, routes, activities):
     results.append(_check(
         "routes_duration_min",
         min_dur >= 0.5,
-        f"estimated_duration_h min={min_dur:.1f} (esperado >= 0.5)",
+        f"estimated_duration_h min={min_dur:.1f} (expected >= 0.5)",
     ))
 
     # 17. activities_duration_min
@@ -266,7 +266,7 @@ def check_domain_ranges(users, routes, activities):
     results.append(_check(
         "activities_duration_min",
         min_act_dur >= 0.2,
-        f"actual_duration_h min={min_act_dur:.1f} (esperado >= 0.2)",
+        f"actual_duration_h min={min_act_dur:.1f} (expected >= 0.2)",
     ))
 
     # 18. activities_rating_range
@@ -276,8 +276,8 @@ def check_domain_ranges(users, routes, activities):
     results.append(_check(
         "activities_rating_range",
         len(invalid_ratings) == 0,
-        f"ratings fuera de 1-5: {len(invalid_ratings)}"
-        + (f" (ej: {invalid_ratings[:5]})" if invalid_ratings else ""),
+        f"ratings outside 1-5: {len(invalid_ratings)}"
+        + (f" (e.g.: {invalid_ratings[:5]})" if invalid_ratings else ""),
     ))
 
     # 19. activities_completed_values
@@ -287,7 +287,7 @@ def check_domain_ranges(users, routes, activities):
     results.append(_check(
         "activities_completed_values",
         len(invalid_completed) == 0,
-        f"completed fuera de {{0,1}}: {invalid_completed if invalid_completed else 'ninguno'}",
+        f"completed outside {{0,1}}: {invalid_completed if invalid_completed else 'none'}",
     ))
 
     # 20. routes_difficulty_values
@@ -297,7 +297,7 @@ def check_domain_ranges(users, routes, activities):
     results.append(_check(
         "routes_difficulty_values",
         len(invalid_diff) == 0,
-        f"difficulty invalidos: {invalid_diff if invalid_diff else 'ninguno'}",
+        f"invalid difficulty: {invalid_diff if invalid_diff else 'none'}",
     ))
 
     # 21. users_experience_values
@@ -307,18 +307,18 @@ def check_domain_ranges(users, routes, activities):
     results.append(_check(
         "users_experience_values",
         len(invalid_exp) == 0,
-        f"experience_level invalidos: {invalid_exp if invalid_exp else 'ninguno'}",
+        f"invalid experience_level: {invalid_exp if invalid_exp else 'none'}",
     ))
 
     return results
 
 
 # =============================================================================
-# Tier 4: Coherencia temporal/logica (3 checks)
+# Tier 4: Temporal/logical coherence (3 checks)
 # =============================================================================
 
 def check_temporal_coherence(users, routes, activities):
-    """Checks de coherencia temporal y logica entre entidades."""
+    """Temporal and logical coherence checks between entities."""
     results = []
 
     # Index users by id for lookups
@@ -335,7 +335,7 @@ def check_temporal_coherence(users, routes, activities):
     results.append(_check(
         "activity_after_registration",
         violations == 0,
-        f"Actividades antes de registro: {violations}",
+        f"Activities before registration: {violations}",
     ))
 
     # Index routes by id
@@ -352,7 +352,7 @@ def check_temporal_coherence(users, routes, activities):
     results.append(_check(
         "circular_elevation_match",
         circular_mismatches == 0,
-        f"Circulares con gain != loss: {circular_mismatches}/{circular_total}",
+        f"Circular with gain != loss: {circular_mismatches}/{circular_total}",
         level="WARN",
     ))
 
@@ -367,7 +367,7 @@ def check_temporal_coherence(users, routes, activities):
     results.append(_check(
         "linear_elevation_bound",
         linear_violations == 0,
-        f"Lineales con loss > gain: {linear_violations}/{linear_total}",
+        f"Linear with loss > gain: {linear_violations}/{linear_total}",
         level="WARN",
     ))
 
@@ -375,11 +375,11 @@ def check_temporal_coherence(users, routes, activities):
 
 
 # =============================================================================
-# Tier 5: Distribuciones (4 checks)
+# Tier 5: Distributions (4 checks)
 # =============================================================================
 
 def check_distributions(users, routes, activities):
-    """Checks de distribuciones: tolerancias sobre proporciones esperadas."""
+    """Distribution checks: tolerances on expected proportions."""
     results = []
     n_users = len(users)
     n_acts = len(activities)
@@ -401,7 +401,7 @@ def check_distributions(users, routes, activities):
     results.append(_check(
         "experience_distribution",
         max_deviation <= DQ_DISTRIBUTION_TOLERANCE,
-        f"Max desviacion: {max_deviation:.1%} (tol: {DQ_DISTRIBUTION_TOLERANCE:.0%}). "
+        f"Max deviation: {max_deviation:.1%} (tol: {DQ_DISTRIBUTION_TOLERANCE:.0%}). "
         + ", ".join(deviations),
         level="WARN",
     ))
@@ -417,8 +417,8 @@ def check_distributions(users, routes, activities):
     results.append(_check(
         "weekend_rate",
         deviation <= DQ_RATE_TOLERANCE,
-        f"Weekend rate: {weekend_rate:.1%} (esperado: {WEEKEND_PROBABILITY:.0%}, "
-        f"desviacion: {deviation:.1%}, tol: {DQ_RATE_TOLERANCE:.0%})",
+        f"Weekend rate: {weekend_rate:.1%} (expected: {WEEKEND_PROBABILITY:.0%}, "
+        f"deviation: {deviation:.1%}, tol: {DQ_RATE_TOLERANCE:.0%})",
         level="WARN",
     ))
 
@@ -433,15 +433,15 @@ def check_distributions(users, routes, activities):
         results.append(_check(
             "rating_mean_completed",
             dev <= DQ_MEAN_TOLERANCE,
-            f"Media completadas: {mean_completed:.2f} (esperado: {RATING_MEAN_COMPLETED}, "
-            f"desviacion: {dev:.2f}, tol: {DQ_MEAN_TOLERANCE})",
+            f"Completed mean: {mean_completed:.2f} (expected: {RATING_MEAN_COMPLETED}, "
+            f"deviation: {dev:.2f}, tol: {DQ_MEAN_TOLERANCE})",
             level="WARN",
         ))
     else:
         results.append(_check(
             "rating_mean_completed",
             False,
-            "No hay ratings de actividades completadas",
+            "No ratings for completed activities",
             level="WARN",
         ))
 
@@ -456,15 +456,15 @@ def check_distributions(users, routes, activities):
         results.append(_check(
             "rating_mean_abandoned",
             dev <= DQ_MEAN_TOLERANCE,
-            f"Media abandonadas: {mean_abandoned:.2f} (esperado: {RATING_MEAN_ABANDONED}, "
-            f"desviacion: {dev:.2f}, tol: {DQ_MEAN_TOLERANCE})",
+            f"Abandoned mean: {mean_abandoned:.2f} (expected: {RATING_MEAN_ABANDONED}, "
+            f"deviation: {dev:.2f}, tol: {DQ_MEAN_TOLERANCE})",
             level="WARN",
         ))
     else:
         results.append(_check(
             "rating_mean_abandoned",
             False,
-            "No hay ratings de actividades abandonadas",
+            "No ratings for abandoned activities",
             level="WARN",
         ))
 
@@ -472,14 +472,14 @@ def check_distributions(users, routes, activities):
 
 
 # =============================================================================
-# Orquestacion y report
+# Orchestration and report
 # =============================================================================
 
 def run_all_checks():
-    """Ejecuta los 28 checks y devuelve (results, score, status).
+    """Run all 28 checks and return (results, score, status).
 
     Returns:
-        (list[dict], float, str): resultados, score 0-100, status global
+        (list[dict], float, str): results, score 0-100, global status
     """
     users, routes, activities = _load_csvs()
 
@@ -490,12 +490,12 @@ def run_all_checks():
     results.extend(check_temporal_coherence(users, routes, activities))
     results.extend(check_distributions(users, routes, activities))
 
-    # Score: WARN cuenta como pass
+    # Score: WARN counts as pass
     passed = sum(1 for r in results if r["status"] in ("PASS", "WARN"))
     total = len(results)
     score = (passed / total * 100) if total > 0 else 0.0
 
-    # Status global
+    # Global status
     has_fail = any(r["status"] == "FAIL" for r in results)
     has_warn = any(r["status"] == "WARN" for r in results)
     if has_fail:
@@ -509,10 +509,10 @@ def run_all_checks():
 
 
 def format_report(results, score, status):
-    """Formatea el report como lista de lineas de texto.
+    """Format the report as a list of text lines.
 
     Returns:
-        list[str]: lineas del report
+        list[str]: report lines
     """
     lines = []
     lines.append("=" * 60)
@@ -520,13 +520,13 @@ def format_report(results, score, status):
     lines.append("=" * 60)
     lines.append("")
 
-    # Agrupar por tier
+    # Group by tier
     tiers = [
         ("Tier 1 — Schema integrity", 0, 8),
         ("Tier 2 — Referential integrity", 8, 13),
         ("Tier 3 — Domain ranges", 13, 21),
-        ("Tier 4 — Coherencia temporal/logica", 21, 24),
-        ("Tier 5 — Distribuciones", 24, 28),
+        ("Tier 4 — Temporal/logical coherence", 21, 24),
+        ("Tier 5 — Distributions", 24, 28),
     ]
 
     for tier_name, start, end in tiers:
@@ -537,13 +537,13 @@ def format_report(results, score, status):
             lines.append(f"         {r['message']}")
         lines.append("")
 
-    # Resumen
+    # Summary
     n_pass = sum(1 for r in results if r["status"] == "PASS")
     n_warn = sum(1 for r in results if r["status"] == "WARN")
     n_fail = sum(1 for r in results if r["status"] == "FAIL")
 
     lines.append("=" * 60)
-    lines.append(f"RESULTADO: {status}")
+    lines.append(f"RESULT: {status}")
     lines.append(f"Score: {score:.0f}% ({n_pass} pass, {n_warn} warn, {n_fail} fail)")
     lines.append(f"Total checks: {len(results)}")
     lines.append("=" * 60)
@@ -552,10 +552,10 @@ def format_report(results, score, status):
 
 
 def main():
-    """Entry point: ejecuta checks y muestra/escribe report."""
+    """Entry point: run checks and display/write report."""
     parser = argparse.ArgumentParser(description="Data quality checks")
     parser.add_argument("--output", type=str, default=None,
-                        help="Ruta de archivo para escribir el report")
+                        help="File path to write the report")
     args = parser.parse_args()
 
     results, score, status = run_all_checks()
@@ -567,9 +567,9 @@ def main():
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(report + "\n")
-        print(f"\nReport escrito en: {args.output}")
+        print(f"\nReport written to: {args.output}")
 
-    # Exit code: 0 si no hay FAILs, 1 si hay FAILs
+    # Exit code: 0 if no FAILs, 1 if there are FAILs
     sys.exit(1 if status == "FAIL" else 0)
 
 

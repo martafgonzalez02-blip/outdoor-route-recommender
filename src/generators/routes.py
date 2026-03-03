@@ -1,11 +1,11 @@
 """
-Generador de rutas simuladas para dim_routes.
+Simulated route generator for dim_routes.
 
-Distribuciones condicionales por zona:
-- Zona → actividad, terreno, dificultad (weighted por zona)
-- Dificultad → distancia, desnivel (gauss truncado)
-- Duración estimada = f(distancia, desnivel, actividad)
-- Nombres realistas desde ROUTE_NAME_PARTS
+Conditional distributions by zone:
+- Zone -> activity, terrain, difficulty (weighted by zone)
+- Difficulty -> distance, elevation (truncated gaussian)
+- Estimated duration = f(distance, elevation, activity)
+- Realistic names from ROUTE_NAME_PARTS
 """
 
 import csv
@@ -34,73 +34,73 @@ from src.config import (
 
 
 def generate_routes(seed=SEED):
-    """Genera NUM_ROUTES rutas con distribuciones condicionales por zona.
+    """Generate NUM_ROUTES routes with conditional distributions by zone.
 
     Returns:
-        list[dict]: Lista de dicts con campos de dim_routes.
+        list[dict]: List of dicts with dim_routes fields.
     """
     random.seed(seed)
 
     zone_names = list(ZONE_ROUTE_DIST.keys())
     zone_weights = list(ZONE_ROUTE_DIST.values())
 
-    # Pre-generar asignacion de zonas para respetar proporciones
+    # Pre-generate zone assignments to respect proportions
     zone_assignments = random.choices(zone_names, weights=zone_weights, k=NUM_ROUTES)
 
-    # Tracking de nombres usados para evitar duplicados
+    # Track used names to avoid duplicates
     used_names = set()
 
     routes = []
     for route_id, zone_name in enumerate(zone_assignments, start=1):
         zone_id = ZONE_IDS[zone_name]
 
-        # Actividad condicional a zona
+        # Activity conditional on zone
         act_dist = ZONE_ACTIVITY_DIST[zone_name]
         activity_name = random.choices(
             list(act_dist.keys()), weights=list(act_dist.values()), k=1
         )[0]
         activity_type_id = ACTIVITY_TYPE_IDS[activity_name]
 
-        # Terreno condicional a zona
+        # Terrain conditional on zone
         ter_dist = ZONE_TERRAIN_DIST[zone_name]
         terrain_name = random.choices(
             list(ter_dist.keys()), weights=list(ter_dist.values()), k=1
         )[0]
         terrain_type_id = TERRAIN_TYPE_IDS[terrain_name]
 
-        # Dificultad condicional a zona (mountain vs flat)
+        # Difficulty conditional on zone (mountain vs flat)
         diff_dist = DIFFICULTY_DIST_MOUNTAIN if ZONE_IS_MOUNTAIN[zone_name] else DIFFICULTY_DIST_FLAT
         difficulty = random.choices(
             list(diff_dist.keys()), weights=list(diff_dist.values()), k=1
         )[0]
 
-        # Distancia y desnivel: gauss truncado (min 0.5 km, min 10 m)
+        # Distance and elevation: truncated gaussian (min 0.5 km, min 10 m)
         dist_mean, dist_std, elev_mean, elev_std = ROUTE_PARAMS_BY_DIFFICULTY[difficulty]
 
-        # Multiplicador de distancia por actividad
+        # Distance modifier by activity
         dist_mult = ACTIVITY_MODIFIERS[activity_name]["distance_mult"]
         distance_km = max(0.5, random.gauss(dist_mean * dist_mult, dist_std * dist_mult))
         distance_km = round(distance_km, 2)
 
         elevation_gain = max(10, int(random.gauss(elev_mean, elev_std)))
 
-        # Circular vs lineal
+        # Circular vs linear
         is_circular = random.random() < CIRCULAR_RATE
         if is_circular:
             elevation_loss = elevation_gain
         else:
             elevation_loss = int(elevation_gain * random.uniform(0.6, 1.0))
 
-        # Duración estimada: (dist/5 + elev_gain/600) * activity_modifier
+        # Estimated duration: (dist/5 + elev_gain/600) * activity_modifier
         duration_mult = ACTIVITY_MODIFIERS[activity_name]["duration_mult"]
         estimated_duration = (distance_km / 5.0 + elevation_gain / 600.0) * duration_mult
         estimated_duration = round(max(0.5, estimated_duration), 1)
 
-        # Nombre realista
+        # Realistic name
         name = _generate_route_name(zone_name, used_names)
         used_names.add(name)
 
-        # Fecha de creacion: uniforme en el año previo a DATE_START
+        # Creation date: uniform in the year prior to DATE_START
         days_before = random.randint(0, 365)
         created_date = DATE_START - timedelta(days=days_before)
 
@@ -119,7 +119,7 @@ def generate_routes(seed=SEED):
             "created_date": created_date.isoformat(),
         })
 
-    # Escribir CSV
+    # Write CSV
     DATA_RAW_DIR.mkdir(parents=True, exist_ok=True)
     csv_path = DATA_RAW_DIR / "routes.csv"
     fieldnames = [
@@ -137,7 +137,7 @@ def generate_routes(seed=SEED):
 
 
 def _generate_route_name(zone_name, used_names):
-    """Genera un nombre de ruta realista para la zona dada."""
+    """Generate a realistic route name for the given zone."""
     parts = ROUTE_NAME_PARTS[zone_name]
     for _ in range(50):
         prefix = random.choice(parts["prefixes"])
@@ -145,45 +145,45 @@ def _generate_route_name(zone_name, used_names):
         name = f"{prefix} {place}"
         if name not in used_names:
             return name
-    # Fallback: añadir sufijo numerico
+    # Fallback: add numeric suffix
     return f"{prefix} {place} {random.randint(1, 999)}"
 
 
 def _print_stats(routes):
-    """Imprime distribucion de rutas generadas."""
+    """Print distribution of generated routes."""
     n = len(routes)
-    print(f"\n--- Routes: {n} generadas ---")
+    print(f"\n--- Routes: {n} generated ---")
 
-    # Por zona
+    # By zone
     zone_counts = {}
     zone_id_to_name = {v: k for k, v in ZONE_IDS.items()}
     for r in routes:
         zname = zone_id_to_name[r["zone_id"]]
         zone_counts[zname] = zone_counts.get(zname, 0) + 1
-    print("  Por zona:")
+    print("  By zone:")
     for zname in sorted(zone_counts.keys()):
         count = zone_counts[zname]
         print(f"    {zname:25s}: {count:3d} ({count/n*100:5.1f}%)")
 
-    # Por dificultad
+    # By difficulty
     diff_counts = {}
     for r in routes:
         d = r["difficulty"]
         diff_counts[d] = diff_counts.get(d, 0) + 1
-    print("  Por dificultad:")
+    print("  By difficulty:")
     for d in ["easy", "moderate", "hard", "expert"]:
         count = diff_counts.get(d, 0)
         print(f"    {d:15s}: {count:3d} ({count/n*100:5.1f}%)")
 
     # Circular
     circ = sum(1 for r in routes if r["is_circular"])
-    print(f"  Circulares: {circ} ({circ/n*100:.1f}%)")
+    print(f"  Circular: {circ} ({circ/n*100:.1f}%)")
 
-    # Distancia media
+    # Average metrics
     avg_dist = sum(r["distance_km"] for r in routes) / n
     avg_elev = sum(r["elevation_gain_m"] for r in routes) / n
     avg_dur = sum(r["estimated_duration_h"] for r in routes) / n
-    print(f"  Distancia media: {avg_dist:.1f} km")
-    print(f"  Desnivel medio: {avg_elev:.0f} m")
-    print(f"  Duracion media: {avg_dur:.1f} h")
+    print(f"  Avg distance: {avg_dist:.1f} km")
+    print(f"  Avg elevation: {avg_elev:.0f} m")
+    print(f"  Avg duration: {avg_dur:.1f} h")
     print(f"  CSV: data/raw/routes.csv")

@@ -1,12 +1,12 @@
 """
-Carga CSVs generados en MySQL.
+Load generated CSVs into MySQL.
 
-Lee data/raw/{users,routes,activities}.csv e inserta en las tablas
-correspondientes via mysql.connector. Batch de 100 filas.
+Reads data/raw/{users,routes,activities}.csv and inserts into the
+corresponding tables via mysql.connector. Batch size of 100 rows.
 
-Requisitos:
-- MySQL corriendo (docker compose up -d)
-- Tablas creadas (schema.sql ejecutado)
+Requirements:
+- MySQL running (docker compose up -d)
+- Tables created (schema.sql executed)
 """
 
 import csv
@@ -17,23 +17,23 @@ BATCH_SIZE = 100
 
 
 def load_all():
-    """Carga los 3 CSVs en MySQL en orden (FKs)."""
+    """Load the 3 CSVs into MySQL in FK order."""
     try:
         import mysql.connector
     except ImportError:
-        print("ERROR: mysql-connector-python no instalado.")
+        print("ERROR: mysql-connector-python not installed.")
         print("  pip install mysql-connector-python")
         return
 
     try:
         conn = mysql.connector.connect(**DB_CONFIG)
     except mysql.connector.Error as e:
-        print(f"ERROR: No se pudo conectar a MySQL: {e}")
-        print("  Verifica que Docker este corriendo: docker compose up -d")
+        print(f"ERROR: Could not connect to MySQL: {e}")
+        print("  Verify Docker is running: docker compose up -d")
         return
 
     cursor = conn.cursor()
-    print(f"Conectado a {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
+    print(f"Connected to {DB_CONFIG['host']}:{DB_CONFIG['port']}/{DB_CONFIG['database']}")
 
     try:
         _load_users(cursor)
@@ -43,27 +43,27 @@ def load_all():
         _load_activities(cursor)
         conn.commit()
 
-        # Verificar conteos
-        print("\nVerificacion de conteos:")
+        # Verify counts
+        print("\nRow count verification:")
         for table in ["dim_users", "dim_routes", "fact_activities"]:
             cursor.execute(f"SELECT COUNT(*) FROM {table}")
             count = cursor.fetchone()[0]
-            print(f"  {table}: {count:,d} filas")
+            print(f"  {table}: {count:,d} rows")
 
     except Exception as e:
         conn.rollback()
-        print(f"ERROR durante la carga: {e}")
+        print(f"ERROR during load: {e}")
         raise
     finally:
         cursor.close()
         conn.close()
-        print("Conexion cerrada.")
+        print("Connection closed.")
 
 
 def _load_users(cursor):
-    """Inserta usuarios desde CSV."""
+    """Insert users from CSV."""
     csv_path = DATA_RAW_DIR / "users.csv"
-    print(f"\nCargando usuarios desde {csv_path}...")
+    print(f"\nLoading users from {csv_path}...")
 
     sql = """
         INSERT INTO dim_users
@@ -89,13 +89,13 @@ def _load_users(cursor):
     if batch:
         cursor.executemany(sql, batch)
 
-    print(f"  {len(rows)} usuarios insertados.")
+    print(f"  {len(rows)} users inserted.")
 
 
 def _load_routes(cursor):
-    """Inserta rutas desde CSV."""
+    """Insert routes from CSV."""
     csv_path = DATA_RAW_DIR / "routes.csv"
-    print(f"\nCargando rutas desde {csv_path}...")
+    print(f"\nLoading routes from {csv_path}...")
 
     sql = """
         INSERT INTO dim_routes
@@ -129,13 +129,13 @@ def _load_routes(cursor):
     if batch:
         cursor.executemany(sql, batch)
 
-    print(f"  {len(rows)} rutas insertadas.")
+    print(f"  {len(rows)} routes inserted.")
 
 
 def _load_activities(cursor):
-    """Inserta actividades desde CSV."""
+    """Insert activities from CSV."""
     csv_path = DATA_RAW_DIR / "activities.csv"
-    print(f"\nCargando actividades desde {csv_path}...")
+    print(f"\nLoading activities from {csv_path}...")
 
     sql = """
         INSERT INTO fact_activities
@@ -167,10 +167,10 @@ def _load_activities(cursor):
         cursor.executemany(sql, batch)
         count += len(batch)
 
-    print(f"  {count} actividades insertadas.")
+    print(f"  {count} activities inserted.")
 
 
 def _read_csv(path):
-    """Lee un CSV y devuelve lista de dicts."""
+    """Read a CSV and return a list of dicts."""
     with open(path, "r", encoding="utf-8") as f:
         return list(csv.DictReader(f))

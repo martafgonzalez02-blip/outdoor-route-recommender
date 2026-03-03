@@ -1,33 +1,33 @@
 """
-Configuracion central para la generacion de datos simulados.
+Central configuration for simulated data generation.
 
-Todas las constantes, distribuciones y parametros de conexion viven aqui.
-Seed = 42 para reproducibilidad total.
+All constants, distributions and connection parameters live here.
+Seed = 42 for full reproducibility.
 """
 
 import os
 from datetime import date
 
 # =============================================================================
-# Reproducibilidad
+# Reproducibility
 # =============================================================================
 SEED = 42
 
 # =============================================================================
-# Volumenes
+# Volumes
 # =============================================================================
 NUM_USERS = 500
 NUM_ROUTES = 200
 TARGET_ACTIVITIES = 20_000
 
 # =============================================================================
-# Rango temporal
+# Time range
 # =============================================================================
 DATE_START = date(2022, 1, 1)
 DATE_END = date(2024, 12, 31)
 
 # =============================================================================
-# IDs de lookup tables (deben coincidir con schema.sql seed data)
+# Lookup table IDs (must match schema.sql seed data)
 # =============================================================================
 
 # dim_activity_types
@@ -61,7 +61,7 @@ ZONE_IDS = {
 }
 
 # =============================================================================
-# Distribuciones de usuarios
+# User distributions
 # =============================================================================
 
 # experience_level: beginner 35%, intermediate 40%, advanced 18%, expert 7%
@@ -80,15 +80,15 @@ USER_PREFERRED_ACTIVITY_DIST = {
     None: 0.15,
 }
 
-# registration_date: beta(3,2) sobre DATE_START..DATE_END (sesgo reciente)
+# registration_date: beta(3,2) over DATE_START..DATE_END (recent bias)
 USER_REG_BETA_A = 3
 USER_REG_BETA_B = 2
 
 # =============================================================================
-# Distribuciones de rutas
+# Route distributions
 # =============================================================================
 
-# Reparto de rutas por zona (no uniforme)
+# Route distribution by zone (non-uniform)
 ZONE_ROUTE_DIST = {
     "Pirineos": 0.15,
     "Costa Brava": 0.08,
@@ -102,7 +102,7 @@ ZONE_ROUTE_DIST = {
     "Delta del Ebro": 0.07,
 }
 
-# Dificultad por tipo de zona (mountain vs non-mountain)
+# Difficulty by zone type (mountain vs non-mountain)
 ZONE_IS_MOUNTAIN = {
     "Pirineos": True,
     "Costa Brava": False,
@@ -130,7 +130,7 @@ DIFFICULTY_DIST_FLAT = {
     "expert": 0.05,
 }
 
-# Tipo de actividad por zona
+# Activity type by zone
 ZONE_ACTIVITY_DIST = {
     "Pirineos": {"hiking": 0.55, "trail_running": 0.30, "cycling": 0.15},
     "Costa Brava": {"hiking": 0.45, "trail_running": 0.25, "cycling": 0.30},
@@ -144,7 +144,7 @@ ZONE_ACTIVITY_DIST = {
     "Delta del Ebro": {"hiking": 0.25, "trail_running": 0.20, "cycling": 0.55},
 }
 
-# Terreno tipico por zona
+# Typical terrain by zone
 ZONE_TERRAIN_DIST = {
     "Pirineos": {"mountain": 0.70, "forest": 0.25, "desert": 0.05},
     "Costa Brava": {"coastal": 0.55, "forest": 0.30, "mountain": 0.15},
@@ -158,7 +158,7 @@ ZONE_TERRAIN_DIST = {
     "Delta del Ebro": {"coastal": 0.50, "urban_park": 0.25, "desert": 0.25},
 }
 
-# Parametros de ruta por dificultad (hiking base)
+# Route parameters by difficulty (hiking base)
 # (distance_km_mean, distance_km_std, elevation_gain_mean, elevation_gain_std)
 ROUTE_PARAMS_BY_DIFFICULTY = {
     "easy": (6.0, 2.0, 200, 80),
@@ -167,26 +167,26 @@ ROUTE_PARAMS_BY_DIFFICULTY = {
     "expert": (25.0, 5.0, 1600, 350),
 }
 
-# Modificadores por tipo de actividad (respecto a hiking base)
+# Modifiers by activity type (relative to hiking base)
 ACTIVITY_MODIFIERS = {
     "hiking": {"distance_mult": 1.0, "duration_mult": 1.0},
     "trail_running": {"distance_mult": 1.0, "duration_mult": 0.65},
     "cycling": {"distance_mult": 3.0, "duration_mult": 0.40},
 }
 
-# Porcentaje de rutas circulares
+# Percentage of circular routes
 CIRCULAR_RATE = 0.55
 
 # =============================================================================
-# Distribuciones de actividades
+# Activity distributions
 # =============================================================================
 
-# Actividades por usuario: lognormal(mu, sigma) -> pocos power users
+# Activities per user: lognormal(mu, sigma) -> few power users
 ACTIVITIES_LOGNORMAL_MU = 3.0
 ACTIVITIES_LOGNORMAL_SIGMA = 0.8
 
-# Pesos de afinidad para seleccion de ruta
-AFFINITY_ACTIVITY_MATCH = 3.0       # ruta coincide con actividad preferida
+# Affinity weights for route selection
+AFFINITY_ACTIVITY_MATCH = 3.0       # route matches preferred activity
 AFFINITY_ACTIVITY_NO_MATCH = 1.0
 AFFINITY_EXP_DIFF_MATRIX = {
     # (experience, difficulty) -> weight
@@ -207,11 +207,11 @@ AFFINITY_EXP_DIFF_MATRIX = {
     ("expert", "hard"): 1.5,
     ("expert", "expert"): 3.0,
 }
-AFFINITY_HOME_ZONE = 2.5           # ruta en zona "home" del usuario
+AFFINITY_HOME_ZONE = 2.5           # route in user's "home" zone
 AFFINITY_OTHER_ZONE = 1.0
-NUM_HOME_ZONES = (1, 3)            # cada usuario tiene 1-3 zonas home
+NUM_HOME_ZONES = (1, 3)            # each user has 1-3 home zones
 
-# Tasa de abandono por mismatch experiencia-dificultad
+# Abandonment rate by experience-difficulty mismatch
 ABANDON_RATE = {
     ("beginner", "easy"): 0.02,
     ("beginner", "moderate"): 0.05,
@@ -231,14 +231,14 @@ ABANDON_RATE = {
     ("expert", "expert"): 0.04,
 }
 
-# Rating: 60% de completadas tienen rating
+# Rating: 60% of completed activities have a rating
 RATING_PROBABILITY = 0.60
 RATING_MEAN_COMPLETED = 3.8
 RATING_STD_COMPLETED = 0.9
 RATING_MEAN_ABANDONED = 2.2
 RATING_STD_ABANDONED = 0.8
 
-# Factor de ajuste de duracion por experiencia
+# Duration adjustment factor by experience
 DURATION_EXPERIENCE_FACTOR = {
     "beginner": 1.25,
     "intermediate": 1.05,
@@ -246,11 +246,11 @@ DURATION_EXPERIENCE_FACTOR = {
     "expert": 0.85,
 }
 
-# Sesgo a fines de semana
+# Weekend bias
 WEEKEND_PROBABILITY = 0.55
 
 # =============================================================================
-# Vocabulario para nombres de rutas
+# Route name vocabulary
 # =============================================================================
 
 ROUTE_NAME_PARTS = {
@@ -330,15 +330,15 @@ ROUTE_NAME_PARTS = {
 # =============================================================================
 # Data quality thresholds (Phase 3)
 # =============================================================================
-DQ_DISTRIBUTION_TOLERANCE = 0.05   # 5pp max desviacion por categoria
-DQ_RATE_TOLERANCE = 0.03           # 3pp para rates (weekend, etc.)
-DQ_MEAN_TOLERANCE = 0.3            # max desviacion en medias (ratings)
-DQ_ACTIVITIES_TOLERANCE = 0.10     # 10% tolerance en total actividades
+DQ_DISTRIBUTION_TOLERANCE = 0.05   # 5pp max deviation per category
+DQ_RATE_TOLERANCE = 0.03           # 3pp for rates (weekend, etc.)
+DQ_MEAN_TOLERANCE = 0.3            # max deviation in means (ratings)
+DQ_ACTIVITIES_TOLERANCE = 0.10     # 10% tolerance on total activities
 
 # =============================================================================
 # Feature engineering (Phase 4)
 # =============================================================================
-FEATURE_MIN_ACTIVITIES = 5  # minimo de completadas para perfil fiable
+FEATURE_MIN_ACTIVITIES = 5  # minimum completed activities for reliable profile
 
 DIFFICULTY_NUMERIC_MAP = {
     "easy": 1,
@@ -354,7 +354,7 @@ EXPERIENCE_NUMERIC_MAP = {
     "expert": 4,
 }
 
-# Columnas continuas a normalizar min-max (user profiles)
+# Continuous columns for min-max normalization (user profiles)
 USER_NORMALIZE_COLS = [
     "total_activities", "completed_activities", "activities_per_month",
     "avg_rating_given", "days_since_last_activity", "activity_span_days",
@@ -363,7 +363,7 @@ USER_NORMALIZE_COLS = [
     "num_distinct_zones",
 ]
 
-# Columnas continuas a normalizar min-max (route features)
+# Continuous columns for min-max normalization (route features)
 ROUTE_NORMALIZE_COLS = [
     "distance_km", "elevation_gain_m", "elevation_loss_m",
     "estimated_duration_h", "total_activities", "unique_users",
@@ -371,7 +371,7 @@ ROUTE_NORMALIZE_COLS = [
 ]
 
 # =============================================================================
-# Conexion MySQL
+# MySQL connection
 # =============================================================================
 DB_CONFIG = {
     "host": os.getenv("MYSQL_HOST", "localhost"),
@@ -382,7 +382,7 @@ DB_CONFIG = {
 }
 
 # =============================================================================
-# Rutas de archivos de salida
+# Output file paths
 # =============================================================================
 import pathlib
 

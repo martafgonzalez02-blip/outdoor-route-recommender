@@ -1,8 +1,8 @@
 """
-Generador de usuarios simulados para dim_users.
+Simulated user generator for dim_users.
 
-Distribucion controlada por config.py:
-- registration_date: beta(3,2) sesgada hacia fechas recientes
+Distribution controlled by config.py:
+- registration_date: beta(3,2) biased towards recent dates
 - experience_level: beginner 35%, intermediate 40%, advanced 18%, expert 7%
 - preferred_activity_type_id: hiking 51%, trail_running 21%, cycling 13%, NULL 15%
 """
@@ -32,24 +32,24 @@ except ImportError:
     fake = None
     _HAS_FAKER = False
 
-# Vocabulario para usernames sin Faker
+# Username vocabulary without Faker
 _PREFIXES = [
-    "trail", "ruta", "monte", "senda", "cumbre", "bosque", "rio", "lago",
-    "pico", "valle", "piedra", "viento", "nieve", "sol", "luna", "lobo",
-    "aguila", "halcon", "ciervo", "oso", "lince", "cabra", "rebeco",
+    "trail", "route", "mount", "path", "summit", "forest", "river", "lake",
+    "peak", "valley", "stone", "wind", "snow", "sun", "moon", "wolf",
+    "eagle", "falcon", "deer", "bear", "lynx", "goat", "chamois",
 ]
 _SUFFIXES = [
     "runner", "hiker", "rider", "walker", "explorer", "nomad", "wanderer",
-    "climber", "trekker", "biker", "aventura", "libre", "salvaje", "norte",
-    "sur", "alpino", "costero", "volcanico",
+    "climber", "trekker", "biker", "adventure", "free", "wild", "north",
+    "south", "alpine", "coastal", "volcanic",
 ]
 
 
 def generate_users(seed=SEED):
-    """Genera NUM_USERS usuarios con distribuciones realistas.
+    """Generate NUM_USERS users with realistic distributions.
 
     Returns:
-        list[dict]: Lista de dicts con campos de dim_users.
+        list[dict]: List of dicts with dim_users fields.
     """
     random.seed(seed)
     if _HAS_FAKER:
@@ -67,18 +67,18 @@ def generate_users(seed=SEED):
     seen_usernames = set()
 
     for user_id in range(1, NUM_USERS + 1):
-        # Username unico
+        # Unique username
         username = _make_username(user_id, seen_usernames)
         seen_usernames.add(username)
 
-        # Registration date: beta(3,2) sesgo hacia fechas recientes
+        # Registration date: beta(3,2) biased towards recent dates
         beta_val = random.betavariate(USER_REG_BETA_A, USER_REG_BETA_B)
         reg_date = DATE_START + timedelta(days=int(beta_val * total_days))
 
         # Experience level
         experience = random.choices(exp_levels, weights=exp_weights, k=1)[0]
 
-        # Preferred activity type (puede ser NULL)
+        # Preferred activity type (can be NULL)
         pref_activity = random.choices(pref_activities, weights=pref_weights, k=1)[0]
 
         users.append({
@@ -89,7 +89,7 @@ def generate_users(seed=SEED):
             "preferred_activity_type_id": pref_activity if pref_activity is not None else "",
         })
 
-    # Escribir CSV
+    # Write CSV
     DATA_RAW_DIR.mkdir(parents=True, exist_ok=True)
     csv_path = DATA_RAW_DIR / "users.csv"
     fieldnames = ["user_id", "username", "registration_date", "experience_level",
@@ -104,7 +104,7 @@ def generate_users(seed=SEED):
 
 
 def _make_username(user_id, seen):
-    """Genera un username unico. Usa Faker si disponible, si no, vocabulario propio."""
+    """Generate a unique username. Uses Faker if available, otherwise own vocabulary."""
     if _HAS_FAKER:
         base = fake.user_name()
         username = f"{base}{user_id}"
@@ -112,7 +112,7 @@ def _make_username(user_id, seen):
             username = f"{fake.user_name()}{random.randint(1000, 9999)}"
         return username
 
-    # Fallback sin Faker: prefix + suffix + id
+    # Fallback without Faker: prefix + suffix + id
     for _ in range(50):
         username = f"{random.choice(_PREFIXES)}_{random.choice(_SUFFIXES)}{user_id}"
         if username not in seen:
@@ -121,9 +121,9 @@ def _make_username(user_id, seen):
 
 
 def _print_stats(users):
-    """Imprime distribucion de usuarios generados."""
+    """Print distribution of generated users."""
     n = len(users)
-    print(f"\n--- Users: {n} generados ---")
+    print(f"\n--- Users: {n} generated ---")
 
     # Experience distribution
     exp_counts = {}
