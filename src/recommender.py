@@ -11,7 +11,8 @@ Requires processed feature files (run build_features first):
 
 Usage:
     python -m src.recommender <user_id>
-    python -m src.recommender <user_id> --n 5
+    python -m src.recommender <user_id> --n 5 --diversity 0.5
+    python -m src.recommender --new-user advanced --activity 1
     python -m src.recommender <user_id> --include-completed
 """
 
@@ -23,6 +24,7 @@ from src.config import (
     ACTIVITY_TYPE_IDS,
     DATA_PROCESSED_DIR,
     DATA_RAW_DIR,
+    EXPERIENCE_NUMERIC_MAP,
     TERRAIN_TYPE_IDS,
     ZONE_IDS,
 )
@@ -56,18 +58,29 @@ _ZONE_SCORE = {
 # Inverse lookup: zone_id -> zone_name
 _ZONE_NAMES = {v: k for k, v in ZONE_IDS.items()}
 
+# Cold start: map experience level to avg_difficulty_num (already /4 normalized)
+# Values represent a user's expected avg difficulty based on declared experience.
+_EXPERIENCE_TO_DIFF_NUM = {
+    "beginner":     1.25 / 4,   # 0.3125 — mostly easy routes
+    "intermediate": 2.00 / 4,   # 0.5000 — moderate routes
+    "advanced":     3.00 / 4,   # 0.7500 — hard routes
+    "expert":       3.75 / 4,   # 0.9375 — hard/expert routes
+}
+
 
 # =============================================================================
 # Public API
 # =============================================================================
 
-def recommend(user_id, n=10, exclude_completed=True):
+def recommend(user_id, n=10, exclude_completed=True, diversity_lambda=0.0):
     """Return the top N route recommendations for a user.
 
     Args:
         user_id: int, target user.
         n: int, number of recommendations to return.
         exclude_completed: bool, skip routes the user has already completed.
+        diversity_lambda: float in [0, 1]. 0 = pure relevance (default),
+            0.5 = balanced, 1 = pure diversity. Uses MMR reranking when > 0.
 
     Returns:
         list[dict], sorted by score descending. Each dict contains:
@@ -83,14 +96,49 @@ def recommend(user_id, n=10, exclude_completed=True):
     profile  = user_profiles[user_id]
     excluded = completed_per_user.get(user_id, set()) if exclude_completed else set()
 
+    return _score_and_rank(
+        profile, route_feats, route_names, route_raw, excluded, n, diversity_lambda
+    )
+
+
+def recommend_new_user(experience_level, preferred_activity_type_id=None,
+                       n=10, diversity_lambda=0.0):
+    """Recommend routes for a user not yet in the system (cold start).
+
+    Builds a synthetic profile from declared preferences. Physical features
+    (distance, elevation) default to neutral since there is no history.
+
+    Args:
+        experience_level: str, one of beginner / intermediate / advanced / expert.
+        preferred_activity_type_id: int or None (1=hiking, 2=trail_running, 3=cycling).
+        n: int, number of recommendations.
+        diversity_lambda: float, MMR diversity parameter (same as recommend()).
+
+    Returns:
+        list[dict], same format as recommend().
+    """
+    valid = set(EXPERIENCE_NUMERIC_MAP.keys())
+    if experience_level not in valid:
+        raise ValueError(f"experience_level must be one of: {sorted(valid)}")
+
+    _, route_feats, route_names, route_raw, _ = _load_data()
+    profile = _build_cold_start_profile(experience_level, preferred_activity_type_id)
+
+    return _score_and_rank(profile, route_feats, route_names, route_raw, set(), n, diversity_lambda)
+
+
+# =============================================================================
+# Internal helpers shared by recommend() and recommend_new_user()
+# =============================================================================
+
+def _score_and_rank(profile, route_feats, route_names, route_raw, excluded, n, diversity_lambda):
+    """Score all eligible routes and return top-n, optionally MMR-reranked."""
     scored = []
     for rid, route in route_feats.items():
         if rid in excluded:
             continue
-
         score, breakdown = _score_route(profile, route)
         raw = route_raw.get(rid, {})
-
         scored.append({
             "route_id":    rid,
             "route_name":  route_names.get(rid, f"Route {rid}"),
@@ -102,7 +150,104 @@ def recommend(user_id, n=10, exclude_completed=True):
         })
 
     scored.sort(key=lambda x: x["score"], reverse=True)
+
+    if diversity_lambda > 0.0:
+        return _mmr_rerank(scored, route_feats, diversity_lambda, n)
     return scored[:n]
+
+
+def _mmr_rerank(candidates, route_feats, lambda_, n):
+    """Maximal Marginal Relevance reranking.
+
+    At each step, selects the candidate that maximises:
+        lambda_ * relevance_score - (1 - lambda_) * max_sim_to_selected
+
+    lambda_=1.0 → pure relevance (identical to original ranking).
+    lambda_=0.0 → pure diversity.
+    lambda_=0.5 → balanced trade-off (recommended default).
+
+    Args:
+        candidates: list of scored dicts, pre-sorted by score desc.
+        route_feats: dict route_id -> feature dict (for similarity).
+        lambda_: float in [0, 1].
+        n: int, number of items to select.
+
+    Returns:
+        list[dict], reranked.
+    """
+    selected = []
+    remaining = list(candidates)
+
+    while len(selected) < n and remaining:
+        if not selected:
+            best = remaining[0]
+        else:
+            best = max(
+                remaining,
+                key=lambda x: (
+                    lambda_ * x["score"]
+                    - (1 - lambda_) * max(
+                        _route_sim(x["route_id"], s["route_id"], route_feats)
+                        for s in selected
+                    )
+                ),
+            )
+        selected.append(best)
+        remaining.remove(best)
+
+    return selected
+
+
+def _route_sim(rid_a, rid_b, route_feats):
+    """Similarity between two routes: 1 - fraction of key attributes that differ."""
+    a = route_feats.get(rid_a, {})
+    b = route_feats.get(rid_b, {})
+    diffs = [
+        a.get("difficulty")       != b.get("difficulty"),
+        a.get("zone_id")          != b.get("zone_id"),
+        a.get("activity_type_id") != b.get("activity_type_id"),
+    ]
+    return 1.0 - sum(diffs) / len(diffs)
+
+
+def _build_cold_start_profile(experience_level, preferred_activity_type_id):
+    """Synthetic user profile from declared experience and activity preference.
+
+    Physical features (distance, elevation) are set to None so the Gaussian
+    similarity returns 0.5 (neutral) — no penalisation for unknown fitness level.
+    All terrain types get uniform weight (1/5) since no history is available.
+    Zone affinity defaults to _ZONE_SCORE_OTHER for all zones.
+    """
+    avg_difficulty_num = _EXPERIENCE_TO_DIFF_NUM.get(experience_level, 0.5)
+
+    pref = preferred_activity_type_id
+    if pref == ACTIVITY_TYPE_IDS["hiking"]:
+        pct_hiking, pct_trail_running, pct_cycling = 1.0, 0.0, 0.0
+    elif pref == ACTIVITY_TYPE_IDS["trail_running"]:
+        pct_hiking, pct_trail_running, pct_cycling = 0.0, 1.0, 0.0
+    elif pref == ACTIVITY_TYPE_IDS["cycling"]:
+        pct_hiking, pct_trail_running, pct_cycling = 0.0, 0.0, 1.0
+    else:
+        pct_hiking = pct_trail_running = pct_cycling = 1.0 / 3.0
+
+    uniform_terrain = 1.0 / 5.0
+
+    return {
+        "avg_difficulty_num":   avg_difficulty_num,
+        "pct_hiking":           pct_hiking,
+        "pct_trail_running":    pct_trail_running,
+        "pct_cycling":          pct_cycling,
+        "pct_mountain":         uniform_terrain,
+        "pct_coastal":          uniform_terrain,
+        "pct_forest":           uniform_terrain,
+        "pct_urban_park":       uniform_terrain,
+        "pct_desert":           uniform_terrain,
+        "avg_distance_km":      None,   # neutral physical score
+        "avg_elevation_gain_m": None,   # neutral physical score
+        "top_zone_1_id":        None,   # all zones get exploration bonus
+        "top_zone_2_id":        None,
+        "top_zone_3_id":        None,
+    }
 
 
 # =============================================================================
@@ -299,9 +444,19 @@ def _safe_int(val):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Content-based route recommender"
+        description="Content-based route recommender",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  python -m src.recommender 42\n"
+            "  python -m src.recommender 42 --n 5 --diversity 0.5\n"
+            "  python -m src.recommender --new-user advanced --activity 1\n"
+        ),
     )
-    parser.add_argument("user_id", type=int, help="User ID to recommend for")
+    parser.add_argument(
+        "user_id", type=int, nargs="?", default=None,
+        help="Existing user ID (omit when using --new-user)",
+    )
     parser.add_argument(
         "--n", type=int, default=10,
         help="Number of recommendations (default: 10)",
@@ -310,22 +465,48 @@ def main():
         "--include-completed", action="store_true",
         help="Include routes already completed by the user",
     )
+    parser.add_argument(
+        "--diversity", type=float, default=0.0, metavar="LAMBDA",
+        help="MMR diversity parameter 0-1 (0=relevance only, 0.5=balanced)",
+    )
+    parser.add_argument(
+        "--new-user", metavar="EXPERIENCE",
+        choices=["beginner", "intermediate", "advanced", "expert"],
+        help="Cold start: experience level for a user not in the system",
+    )
+    parser.add_argument(
+        "--activity", type=int, choices=[1, 2, 3], default=None,
+        help="Preferred activity type ID for cold start (1=hiking, 2=trail, 3=cycling)",
+    )
     args = parser.parse_args()
 
-    recs = recommend(
-        args.user_id,
-        n=args.n,
-        exclude_completed=not args.include_completed,
-    )
+    if args.new_user:
+        label = f"new {args.new_user} user"
+        recs = recommend_new_user(
+            args.new_user,
+            preferred_activity_type_id=args.activity,
+            n=args.n,
+            diversity_lambda=args.diversity,
+        )
+    elif args.user_id is not None:
+        label = f"user {args.user_id}"
+        recs = recommend(
+            args.user_id,
+            n=args.n,
+            exclude_completed=not args.include_completed,
+            diversity_lambda=args.diversity,
+        )
+    else:
+        parser.error("Provide a user_id or use --new-user EXPERIENCE")
+        return
 
-    print(f"\nTop {len(recs)} recommendations for user {args.user_id}")
+    diversity_tag = f" [diversity lambda={args.diversity}]" if args.diversity > 0 else ""
+    print(f"\nTop {len(recs)} recommendations for {label}{diversity_tag}")
     print("=" * 70)
 
     for i, r in enumerate(recs, 1):
         zone_name = _ZONE_NAMES.get(r["zone_id"], f"zone_{r['zone_id']}")
         bd = r["breakdown"]
-
-        # Top 3 contributing factors (weight * score, descending)
         ranked = sorted(bd.items(), key=lambda x: WEIGHTS[x[0]] * x[1], reverse=True)
         top3 = [f"{k}={v:.2f}" for k, v in ranked[:3]]
 
