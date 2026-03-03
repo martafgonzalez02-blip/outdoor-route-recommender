@@ -95,6 +95,64 @@ dim_geographic_zones (10 rows)─┤─► dim_routes (200 rows) ─┐
 
 See [docs/DATA_MODEL.md](docs/DATA_MODEL.md) for table definitions, column descriptions, and design rationale.
 
+## Simulated data
+
+No scraping, no external APIs. All data is generated with realistic statistical distributions, parameterized in `src/config.py` and fully reproducible with `seed=42`.
+
+### Users (500)
+
+| Field | Distribution | Detail |
+|-------|-------------|--------|
+| `registration_date` | Beta(3, 2) | Skewed toward recent dates (2022–2024) |
+| `experience_level` | Categorical | beginner 35% · intermediate 40% · advanced 18% · expert 7% |
+| `preferred_activity_type_id` | Categorical | hiking 51% · trail_running 21% · cycling 13% · NULL 15% |
+
+### Routes (200)
+
+Distributions are conditional on zone — the zone determines activity, terrain, and difficulty probabilities:
+
+| Field | Distribution | Detail |
+|-------|-------------|--------|
+| `zone_id` | Weighted categorical | Pirineos 15% · Guadarrama 12% · others 7–10% each |
+| `activity_type_id` | Conditional on zone | e.g. Ordesa: 65% hiking · Delta del Ebro: 55% cycling |
+| `terrain_type_id` | Conditional on zone | e.g. Montserrat: 80% mountain · Montseny: 55% forest |
+| `difficulty` | Conditional on zone type | Mountain zones: moderate/hard 35% each · flat zones: easy 40% |
+| `distance_km` | Truncated Gaussian | Mean/std by difficulty, multiplied by activity modifier (cycling ×3) |
+| `elevation_gain_m` | Truncated Gaussian | Mean/std by difficulty (easy: 200 ± 80 m · expert: 1600 ± 350 m) |
+| `is_circular` | Bernoulli(0.55) | Circular routes: elevation_loss = elevation_gain |
+| `estimated_duration_h` | Calculated | `(distance / 5 + elevation / 600) × activity_modifier` |
+
+### Activities (~20,000)
+
+The most complex generator. Each user selects routes by affinity weight, not uniformly:
+
+```
+weight(user, route) = W_activity × W_experience × W_zone
+
+W_activity  = 3.0  if route.activity == user.preferred_activity, else 1.0
+W_experience = matrix[user.experience][route.difficulty]  (3.0 = perfect match, 0.05 = extreme mismatch)
+W_zone      = 2.5  if route.zone in user.home_zones (1–3 zones per user), else 1.0
+```
+
+| Field | Distribution | Detail |
+|-------|-------------|--------|
+| Activities per user | Lognormal(μ=3.0, σ=0.8) | Scaled to ~20K total — few power users, many casual |
+| `activity_date` | Post-registration + weekend bias | 55% on weekends |
+| `completed` | Bernoulli(1 − abandon_rate) | Abandonment varies by experience × difficulty mismatch |
+| `actual_duration_h` | estimated × experience_factor × N(1, 0.15) | Abandoned: 30–80% of estimated |
+| `rating` | 60% probability, Gaussian | Completed: mean 3.8 · Abandoned: mean 2.2 · clamped to [1, 5] |
+
+Abandonment rates by experience and difficulty:
+
+| | easy | moderate | hard | expert |
+|-|------|----------|------|--------|
+| beginner | 2% | 5% | 20% | 40% |
+| intermediate | 1% | 3% | 8% | 20% |
+| advanced | 1% | 1% | 3% | 8% |
+| expert | 1% | 1% | 2% | 4% |
+
+See [docs/DATA_GENERATION.md](docs/DATA_GENERATION.md) for full distribution parameters and SQL validation queries.
+
 ## Key design decisions
 
 **No ML framework** — features and scoring are pure Python + SQL. Every step is explicit, inspectable, and debuggable without understanding a black box.
