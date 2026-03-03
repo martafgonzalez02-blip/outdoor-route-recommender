@@ -50,10 +50,10 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 | 2 | Ingesta y normalizacion | Scripts Python de ingesta | Completada |
 | 3 | Calidad de datos | Reglas, scoring, informe | Completada |
 | 4 | Feature engineering | FEATURES.md, scripts SQL/Python | Completada |
-| 5 | Recomendador v1 | recommender.py, recommend(user_id) | Pendiente |
-| 6 | Evaluacion offline | Metricas, notebook de evaluacion | Pendiente |
-| 7 | Edge cases y producto | Cold start, fallbacks | Pendiente |
-| 8 | Documentacion final | README definitivo, arquitectura | Pendiente |
+| 5 | Recomendador v1 | recommender.py, recommend(user_id) | Completada |
+| 6 | Evaluacion offline | Metricas, notebook de evaluacion | Completada |
+| 7 | Edge cases y producto | Cold start, fallbacks | Completada |
+| 8 | Documentacion final | README definitivo, arquitectura | Completada |
 
 ## Estado actual
 
@@ -62,6 +62,10 @@ Motor de recomendacion de rutas outdoor (senderismo, trail running, ciclismo) ba
 - **Fase 2**: Completada (generators + db_loader + DATA_GENERATION.md)
 - **Fase 3**: Completada (data_quality.py + quality_checks.sql + DATA_QUALITY.md)
 - **Fase 4**: Completada (build_features.py + features/ + FEATURES.md)
+- **Fase 5**: Completada (recommender.py + scoring 6 dimensiones)
+- **Fase 6**: Completada (evaluation.py + 6 metricas offline)
+- **Fase 7**: Completada (cold start + MMR diversification)
+- **Fase 8**: Completada (README definitivo + ARCHITECTURE.md)
 
 ## Comandos
 
